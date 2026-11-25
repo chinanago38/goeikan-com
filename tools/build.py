@@ -6,7 +6,7 @@ import glob, html, os, re, datetime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOMAIN = "https://xn--ef1ay5jhyc.com"
-CSS_VER = "20261125b"
+CSS_VER = "20261125c"
 AD = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1061443138303693" crossorigin="anonymous"></script>'
 NAV = [("一般公開", "/koukai/"), ("護衛艦", "/kan/"), ("海戦", "/kaisen/"), ("戦艦", "/senkan/"), ("人物", "/jinbutsu/")]
 SECTION_NAME = {"kaisen": ("海戦", "/kaisen/"), "senkan": ("戦艦", "/senkan/"), "jinbutsu": ("人物", "/jinbutsu/"),
@@ -185,13 +185,43 @@ def link_ships(url, body):
         return m.group(0)
     return re.sub(r"<td>([ぁ-ん]+)</td>", rep, body)
 
+def top_hero(body):
+    global PHOTOS
+    if PHOTOS is None: PHOTOS = load_photos()
+    ph = PHOTOS.get("/kan/izumo/")
+    bg = f' style="background-image:linear-gradient(180deg,rgba(6,22,44,.55),rgba(6,22,44,.85)),url({esc(ph[1])})"' if ph else ""
+    credit = (f'<p class="credit">写真：護衛艦「いずも」 {esc(ph[3])} / <a href="{esc(ph[5])}" rel="noopener license" target="_blank">{esc(ph[4])}</a>'
+              f'（<a href="{esc(ph[2])}" rel="noopener" target="_blank">Wikimedia Commons</a>）</p>') if ph else ""
+    n_kan = len(glob.glob(os.path.join(ROOT, "tools", "content", "kan__*.html"))) - 1
+    stats = [("54隻", "現役の護衛艦", "/kan/"), ("4", "地方総監部と大湊", "/minato/"), (str(len(glob.glob(os.path.join(ROOT, "tools", "content", "kaisen__*.html"))) - 1), "海戦の解説", "/kaisen/"), ("12隻", "旧海軍の戦艦", "/senkan/")]
+    st = "".join(f'<a class="stat" href="{u}"><b>{v}</b><small>{t}</small></a>' for v, t, u in stats)
+    return (f'<section class="tophero"{bg}><div class="inner"><p class="kicker">海上自衛隊の護衛艦と、日本の海の歴史</p>'
+            f'<h1>護衛艦の一般公開と<br>海の歴史ガイド</h1><p class="lead">全国の艦艇公開の予定、現役の護衛艦の1隻ずつのガイド、日本海海戦から坊ノ岬沖まで。公的な資料だけで作る、個人運営のガイドです。</p>'
+            f'<div class="stats">{st}</div><div class="cta"><a class="btn" href="/koukai/">一般公開カレンダー</a><a class="btn ghost" href="/kan/">護衛艦一覧</a></div></div>{credit}</section>\n')
+
+def ul_to_cards(main):
+    def rep(m):
+        items = re.findall(r'<li><a href="([^"]+)">(.*?)</a>(?:：|・)?(.*?)</li>', m.group(0), re.S)
+        if not items or len(items) < 3: return m.group(0)
+        return '<div class="cards">' + "".join(f'<a class="card" href="{u}"><strong>{strip(t)}</strong><small>{strip(d)}</small></a>' for u, t, d in items) + "</div>"
+    return re.sub(r"<ul>(?:\s*<li><a href=.*?</li>)+\s*</ul>", rep, main, flags=re.S)
+
 def render(url, title, desc, body):
     body = link_ships(url, body)
     m = re.search(r"<h1>(.*?)</h1>\s*(<p class=\"updated\">.*?</p>)?", body, re.S)
     hero = ""
     if m:
         body = body[:m.start()] + body[m.end():]
-        hero = f'<div class="page-hero"><h1>{m.group(1)}</h1>{m.group(2) or ""}{hero_chips(body)}</div>\n'
+        global PHOTOS
+        if PHOTOS is None: PHOTOS = load_photos()
+        ph = PHOTOS.get(url)
+        if ph:
+            credit = (f'<p class="credit">写真：{esc(ph[6])} {esc(ph[3])} / <a href="{esc(ph[5])}" rel="noopener license" target="_blank">{esc(ph[4])}</a>'
+                      f'（<a href="{esc(ph[2])}" rel="noopener" target="_blank">Wikimedia Commons</a>）</p>')
+            hero = (f'<div class="page-hero photo-hero" style="background-image:linear-gradient(180deg,rgba(6,22,44,.35),rgba(6,22,44,.88)),url({esc(ph[1])})">'
+                    f'<h1>{m.group(1)}</h1>{m.group(2) or ""}{hero_chips(body)}{credit}</div>\n')
+        else:
+            hero = f'<div class="page-hero"><h1>{m.group(1)}</h1>{m.group(2) or ""}{hero_chips(body)}</div>\n'
     k = body.find('<section class="sources">')
     rel = related_cards(url)
     body = (body[:k] + rel + body[k:]) if k >= 0 else body + rel
@@ -201,7 +231,10 @@ def render(url, title, desc, body):
         if len(seg) == 2 and seg[0] in SECTION_NAME: crumbs.append(SECTION_NAME[seg[0]])
         crumbs.append((strip(m.group(1)) if m else title, None))
     crumb = " › ".join(f'<a href="{u}">{esc(t)}</a>' if u else esc(t) for t, u in crumbs)
-    main = (f'  <div class="crumb">{crumb}</div>\n' if url != "/" else "") + hero + photo_html(url) + insert_after_first_section(blockify(wrap_tables(body)), figure_for(url))
+    if url == "/":
+        hero = top_hero(body)
+    body = ul_to_cards(body)
+    main = (f'  <div class="crumb">{crumb}</div>\n' if url != "/" else "") + hero + insert_after_first_section(blockify(wrap_tables(body)), figure_for(url))
     nav = "".join(f'<a href="{u}">{t}</a>' for t, u in NAV)
     return f"""<!DOCTYPE html>
 <html lang="ja">
