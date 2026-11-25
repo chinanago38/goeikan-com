@@ -6,10 +6,10 @@ import glob, html, os, re, datetime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOMAIN = "https://xn--ef1ay5jhyc.com"
-CSS_VER = "20261125c"
+CSS_VER = "20261125d"
 AD = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1061443138303693" crossorigin="anonymous"></script>'
-NAV = [("一般公開", "/koukai/"), ("護衛艦", "/kan/"), ("海戦", "/kaisen/"), ("戦艦", "/senkan/"), ("人物", "/jinbutsu/")]
-SECTION_NAME = {"kaisen": ("海戦", "/kaisen/"), "senkan": ("戦艦", "/senkan/"), "jinbutsu": ("人物", "/jinbutsu/"),
+NAV = [("一般公開", "/koukai/"), ("護衛艦", "/kan/"), ("海戦", "/kaisen/"), ("戦艦", "/senkan/"), ("空母", "/kubo/"), ("潜水艦", "/sensuikan/"), ("人物", "/jinbutsu/")]
+SECTION_NAME = {"kaisen": ("海戦", "/kaisen/"), "senkan": ("戦艦", "/senkan/"), "kubo": ("空母", "/kubo/"), "sensuikan": ("潜水艦", "/sensuikan/"), "jinbutsu": ("人物", "/jinbutsu/"),
                 "kan": ("護衛艦", "/kan/"), "koukai": ("一般公開", "/koukai/"), "minato": ("港", "/minato/")}
 
 def esc(s): return html.escape(s, quote=True)
@@ -97,19 +97,21 @@ def fig_kaisen(url):
                   + (f'<a href="{h}">{esc(n)}</a>' if h and h != url else f'<span>{esc(n)}</span>') + "</li>" for y, n, h in items)
     return f'<figure class="figure"><ol class="tl">{lis}</ol><figcaption>近代日本の主な海戦の年表（色のついた行がこのページの海戦）</figcaption></figure>\n'
 
-def fig_senkan(url):
-    rows = table_rows(read_body("senkan__index.html"), 0)
+def fig_senkan(url, src="senkan__index.html", col=5, label="戦艦12隻", link="戦艦一覧"):
+    if not os.path.exists(os.path.join(ROOT, "tools", "content", src)): return ""
+    rows = table_rows(read_body(src), 0)
     by = {}
     for r in rows:
-        if len(r) < 6: continue
-        y = re.search(r"(19\d\d)", strip(r[5]))
-        if y: by.setdefault(y.group(1), []).append((strip(r[1]), href_of(r[1])))
+        if len(r) <= col: continue
+        y = re.search(r"(19\d\d)", strip(r[col]))
+        nc = next((c for c in r if "href" in c), r[1])
+        if y: by.setdefault(y.group(1), []).append((strip(nc), href_of(nc)))
     if not by: return ""
     cols = ""
     for y in sorted(by):
         ships = "".join(f'<span class="ship{" me" if h == url else ""}">{esc(n)}</span>' for n, h in by[y])
         cols += f'<div class="yr"><b>{y}年</b>{ships}</div>'
-    return f'<figure class="figure"><div class="fate">{cols}</div><figcaption>旧日本海軍の戦艦12隻が失われた年（色のついたものがこのページの艦）。資料：当サイトの戦艦一覧</figcaption></figure>\n'
+    return f'<figure class="figure"><div class="fate">{cols}</div><figcaption>旧日本海軍の{label}の最期の年（色のついたものがこのページの艦）。資料：当サイトの{link}</figcaption></figure>\n'
 
 def fig_jinbutsu(url):
     rows = table_rows(read_body("jinbutsu__index.html"), 0)
@@ -158,8 +160,30 @@ def related_cards(url):
 def figure_for(url):
     if url.startswith("/kaisen/"): return fig_kaisen(url)
     if url.startswith("/senkan/"): return fig_senkan(url)
+    if url == "/sensuikan/" or (url.startswith("/sensuikan/") and re.match(r"/sensuikan/i\d+/", url)): return fig_senkan(url, "sensuikan__index.html", 3, "潜水艦（主な艦）", "潜水艦のページ")
+    if url.startswith("/kubo/"): return fig_senkan(url, "kubo__index.html", 3, "空母", "空母一覧")
     if url.startswith("/jinbutsu/"): return fig_jinbutsu(url)
     return ""
+
+GALLERY = None
+def gallery_for(url, hero_src):
+    global GALLERY
+    if GALLERY is None:
+        GALLERY = {}
+        p = os.path.join(ROOT, "tools", "photos", "gallery.tsv")
+        if os.path.exists(p):
+            for l in open(p, encoding="utf-8").read().splitlines()[1:]:
+                r = l.split("\t")
+                if len(r) >= 7 and r[5]: GALLERY.setdefault(r[0], []).append(r)
+    items = [r for r in GALLERY.get(url, []) if r[2] != hero_src]
+    if len(items) < 2: return ""
+    figs = "".join(
+        f'<figure><a href="{esc(r[3])}" target="_blank" rel="noopener"><img src="{esc(r[2])}" alt="{esc((r[1] + "見た" if r[1] else "") + "艦の写真")}" loading="lazy" decoding="async"></a>'
+        f'<figcaption>{"<b>" + esc(r[1]) + "</b> " if r[1] else ""}{esc(r[4][:60])} / '
+        f'{"<a href=" + chr(34) + esc(r[6]) + chr(34) + " target=_blank rel=" + chr(34) + "noopener license" + chr(34) + ">" + esc(r[5]) + "</a>" if r[6] else esc(r[5])}</figcaption></figure>'
+        for r in items[:6])
+    return (f'<section class="block"><h2>写真ギャラリー</h2><div class="gallery">{figs}</div>'
+            f'<p class="note">写真はWikimedia Commonsの自由ライセンス画像です。クリックすると撮影者・ライセンスの詳細ページが開きます。角度の表記は画像の説明文から判定したもので、表記のない写真もあります。</p></section>\n')
 
 def insert_after_first_section(main, fig):
     if not fig: return main
@@ -215,7 +239,7 @@ def unlink_missing(body):
     def rep(m):
         d, sl = m.group(1), m.group(2)
         return m.group(0) if complete(f"{d}__{sl}.html") else m.group(3)
-    return re.sub(r'<a href="/(kan|kaisen|senkan|jinbutsu|minato)/([a-z0-9]+)/"[^>]*>(.*?)</a>', rep, body)
+    return re.sub(r'<a href="/(kan|kaisen|senkan|kubo|sensuikan|jinbutsu|minato)/([a-z0-9]+)/"[^>]*>(.*?)</a>', rep, body)
 
 def render(url, title, desc, body):
     body = unlink_missing(link_ships(url, body))
@@ -236,6 +260,7 @@ def render(url, title, desc, body):
     k = body.find('<section class="sources">')
     rel = related_cards(url)
     body = (body[:k] + rel + body[k:]) if k >= 0 else body + rel
+    gal = gallery_for(url, PHOTOS.get(url, [None, None])[1] if PHOTOS else None)
     crumbs = [("護衛艦.com", "/")]
     seg = url.strip("/").split("/")
     if url != "/":
@@ -246,6 +271,9 @@ def render(url, title, desc, body):
         hero = top_hero(body)
     body = ul_to_cards(body)
     main = (f'  <div class="crumb">{crumb}</div>\n' if url != "/" else "") + hero + insert_after_first_section(blockify(wrap_tables(body)), figure_for(url))
+    if gal:
+        j = main.find('<section class="sources block">')
+        main = main[:j] + gal + main[j:] if j >= 0 else main + gal
     nav = "".join(f'<a href="{u}">{t}</a>' for t, u in NAV)
     return f"""<!DOCTYPE html>
 <html lang="ja">
