@@ -147,6 +147,7 @@ def related_cards(url):
     for f in sorted(glob.glob(os.path.join(ROOT, "tools", "content", f"{d}__*.html"))):
         u = url_of(f)
         if u == url: continue
+        if '<section class="sources">' not in open(f, encoding="utf-8").read(): continue
         b = open(f, encoding="utf-8").read().split("\n", 2)
         m = re.search(r"<h1>(.*?)</h1>", b[2], re.S)
         dm = re.search(r'content="([^"]*)"', b[1]); dtext = html.unescape(dm.group(1)) if dm else strip(b[1])
@@ -180,7 +181,7 @@ def link_ships(url, body):
     if url != "/kan/": return body
     def rep(m):
         n = m.group(1); sl = SHIPS.get(n)
-        if sl and os.path.exists(os.path.join(ROOT, "tools", "content", f"kan__{sl}.html")):
+        if sl and complete(f"kan__{sl}.html"):
             return f'<td><a href="/kan/{sl}/">{n}</a></td>'
         return m.group(0)
     return re.sub(r"<td>([ぁ-ん]+)</td>", rep, body)
@@ -206,8 +207,18 @@ def ul_to_cards(main):
         return '<div class="cards">' + "".join(f'<a class="card" href="{u}"><strong>{strip(t)}</strong><small>{strip(d)}</small></a>' for u, t, d in items) + "</div>"
     return re.sub(r"<ul>(?:\s*<li><a href=.*?</li>)+\s*</ul>", rep, main, flags=re.S)
 
+def complete(name):
+    f = os.path.join(ROOT, "tools", "content", name)
+    return os.path.exists(f) and '<section class="sources">' in open(f, encoding="utf-8").read()
+
+def unlink_missing(body):
+    def rep(m):
+        d, sl = m.group(1), m.group(2)
+        return m.group(0) if complete(f"{d}__{sl}.html") else m.group(3)
+    return re.sub(r'<a href="/(kan|kaisen|senkan|jinbutsu|minato)/([a-z0-9]+)/"[^>]*>(.*?)</a>', rep, body)
+
 def render(url, title, desc, body):
-    body = link_ships(url, body)
+    body = unlink_missing(link_ships(url, body))
     m = re.search(r"<h1>(.*?)</h1>\s*(<p class=\"updated\">.*?</p>)?", body, re.S)
     hero = ""
     if m:
@@ -274,7 +285,7 @@ def main():
     urls = []
     for f in sorted(glob.glob(os.path.join(ROOT, "tools", "content", "*.html"))):
         lines = open(f, encoding="utf-8").read().split("\n", 2)
-        if len(lines) < 3: continue
+        if len(lines) < 3 or '<section class="sources">' not in lines[2] or not lines[2].rstrip().endswith("</section>"): continue
         url = url_of(f)
         out = os.path.join(ROOT, url.strip("/"), "index.html") if url != "/" else os.path.join(ROOT, "index.html")
         os.makedirs(os.path.dirname(out), exist_ok=True)
