@@ -190,3 +190,8 @@ section.block h2{font-size:1.35rem}
 .gallery figcaption{font-size:.78rem;padding:8px 10px;color:#41536b;line-height:1.5}
 .gallery figcaption b{display:inline-block;background:var(--deep);color:#fff;border-radius:4px;padding:0 6px;margin-right:4px}
 .note{font-size:.8rem;color:#5b6b80}
+
+/* fate chips as links */
+.fate a.ship{text-decoration:none;color:#fff;cursor:pointer;position:relative}
+.fate a.ship::after{content:"›";position:absolute;right:12px;opacity:.6}
+.fate a.ship:hover{filter:brightness(1.35)}

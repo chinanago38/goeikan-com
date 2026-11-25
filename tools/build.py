@@ -6,7 +6,7 @@ import glob, html, os, re, datetime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOMAIN = "https://xn--ef1ay5jhyc.com"
-CSS_VER = "20261125d"
+CSS_VER = "20261125e"
 AD = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1061443138303693" crossorigin="anonymous"></script>'
 NAV = [("一般公開", "/koukai/"), ("護衛艦", "/kan/"), ("海戦", "/kaisen/"), ("戦艦", "/senkan/"), ("空母", "/kubo/"), ("潜水艦", "/sensuikan/"), ("人物", "/jinbutsu/")]
 SECTION_NAME = {"kaisen": ("海戦", "/kaisen/"), "senkan": ("戦艦", "/senkan/"), "kubo": ("空母", "/kubo/"), "sensuikan": ("潜水艦", "/sensuikan/"), "jinbutsu": ("人物", "/jinbutsu/"),
@@ -123,7 +123,9 @@ def fig_senkan(url, src="senkan__index.html", col=5, label="戦艦12隻", link="
     if not by: return ""
     cols = ""
     for y in sorted(by):
-        ships = "".join(f'<span class="ship{" me" if h == url else ""}">{esc(n)}</span>' for n, h in by[y])
+        ships = "".join((f'<span class="ship me">{esc(n)}</span>' if h == url else
+                         f'<a class="ship" href="{h}">{esc(n)}</a>' if h and os.path.exists(os.path.join(ROOT, h.strip("/"), "index.html")) else
+                         f'<span class="ship">{esc(n)}</span>') for n, h in by[y])
         cols += f'<div class="yr"><b>{y}年</b>{ships}</div>'
     return f'<figure class="figure"><div class="fate">{cols}</div><figcaption>旧日本海軍の{label}の最期の年（色のついたものがこのページの艦）。資料：当サイトの{link}</figcaption></figure>\n'
 
