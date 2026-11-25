@@ -103,7 +103,7 @@ def main():
     rows = [l.split("\t") for l in open(os.path.join(ROOT, "tools/photos/targets.tsv"), encoding="utf-8").read().splitlines()[1:] if l.strip()]
     out = ["slug\tangle\tthumb_url\tfile_page_url\tauthor\tlicense\tlicense_url"]
     for slug, ja in rows:
-        if not re.match(r"^/(kan|senkan|kubo)/[a-z0-9]+/$", slug): continue
+        if not re.match(r"^/(kan|senkan|kubo|sensuikan)/[a-z0-9]+/$", slug): continue
         cat = commons_category(ja)
         if not cat:
             print("no category:", slug, ja); continue
