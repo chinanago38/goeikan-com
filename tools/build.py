@@ -95,7 +95,10 @@ def main():
         url = url_of(f)
         out = os.path.join(ROOT, url.strip("/"), "index.html") if url != "/" else os.path.join(ROOT, "index.html")
         os.makedirs(os.path.dirname(out), exist_ok=True)
-        open(out, "w", encoding="utf-8").write(render(url, lines[0].strip(), lines[1].strip(), lines[2]))
+        title = strip(lines[0])
+        dm = re.search(r'content="([^"]*)"', lines[1])
+        desc = html.unescape(dm.group(1)) if dm else strip(lines[1])
+        open(out, "w", encoding="utf-8").write(render(url, html.unescape(title), desc, lines[2]))
         urls.append(url)
     today = datetime.date.today().isoformat()
     sm = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
