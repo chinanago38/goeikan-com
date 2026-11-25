@@ -167,7 +167,26 @@ def insert_after_first_section(main, fig):
     fig = f'<section class="block"><h2>{title}</h2>{fig}</section>\n'
     return main[:i + 10] + "\n" + fig + main[i + 10:] if i >= 0 else main + fig
 
+SHIPS = {"いずも":"izumo","かが":"kaga","ひゅうが":"hyuga","いせ":"ise","まや":"maya","はぐろ":"haguro","あたご":"atago","あしがら":"ashigara",
+ "こんごう":"kongo","きりしま":"kirishima","みょうこう":"myoko","ちょうかい":"chokai","あさひ":"asahi","しらぬい":"shiranui","あきづき":"akizuki",
+ "てるづき":"teruzuki","すずつき":"suzutsuki","ふゆづき":"fuyuzuki","たかなみ":"takanami","おおなみ":"onami","まきなみ":"makinami","さざなみ":"sazanami",
+ "すずなみ":"suzunami","むらさめ":"murasame","はるさめ":"harusame","ゆうだち":"yudachi","きりさめ":"kirisame","いなづま":"inazuma","さみだれ":"samidare",
+ "いかづち":"ikazuchi","あけぼの":"akebono","ありあけ":"ariake","あまぎり":"amagiri","ゆうぎり":"yugiri","うみぎり":"umigiri","さわぎり":"sawagiri",
+ "せとぎり":"setogiri","はまぎり":"hamagiri","もがみ":"mogami","くまの":"kumano","のしろ":"noshiro","みくま":"mikuma","やはぎ":"yahagi","あがの":"agano",
+ "によど":"niyodo","ゆうべつ":"yubetsu","なとり":"natori","ながら":"nagara","あぶくま":"abukuma","とね":"tone","じんつう":"jintsu","せんだい":"sendai",
+ "おおよど":"oyodo","ちくま":"chikuma"}
+
+def link_ships(url, body):
+    if url != "/kan/": return body
+    def rep(m):
+        n = m.group(1); sl = SHIPS.get(n)
+        if sl and os.path.exists(os.path.join(ROOT, "tools", "content", f"kan__{sl}.html")):
+            return f'<td><a href="/kan/{sl}/">{n}</a></td>'
+        return m.group(0)
+    return re.sub(r"<td>([ぁ-ん]+)</td>", rep, body)
+
 def render(url, title, desc, body):
+    body = link_ships(url, body)
     m = re.search(r"<h1>(.*?)</h1>\s*(<p class=\"updated\">.*?</p>)?", body, re.S)
     hero = ""
     if m:
