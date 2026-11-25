@@ -99,12 +99,20 @@ def pick(cands, n=6):
             chosen.append((angle(c["text"]), c)); used.add(c["title"])
     return chosen
 
+# Wikidata が艦級のカテゴリを返す・カテゴリがない艦は、艦ごとのカテゴリを指定する（存在しなければ写真なし）
+OVERRIDE = {"/sensuikan/i400/": "Category:I-400 (submarine, 1944)", "/sensuikan/i58/": "Category:I-58 (submarine, 1944)",
+            "/sensuikan/i19/": "Category:I-19 (submarine, 1940)", "/sensuikan/i168/": "Category:I-168 (submarine, 1933)",
+            "/kan/takanami/": "Category:JS Takanami (DD-110)", "/kan/asahi/": "Category:JS Asahi (DD-119)",
+            "/kan/natori/": "Category:JS Natori (FFM-9)", "/kan/niyodo/": "Category:JS Niyodo (FFM-7)"}
+
 def main():
     rows = [l.split("\t") for l in open(os.path.join(ROOT, "tools/photos/targets.tsv"), encoding="utf-8").read().splitlines()[1:] if l.strip()]
     out = ["slug\tangle\tthumb_url\tfile_page_url\tauthor\tlicense\tlicense_url"]
     for slug, ja in rows:
         if not re.match(r"^/(kan|senkan|kubo|sensuikan)/[a-z0-9]+/$", slug): continue
-        cat = commons_category(ja)
+        cat = OVERRIDE.get(slug) or commons_category(ja)
+        if cat and slug not in OVERRIDE and " class" in cat.lower():
+            print("class category skipped:", slug, cat); continue
         if not cat:
             print("no category:", slug, ja); continue
         files = [f for f in files_in(cat) if re.search(r"\.(jpe?g|png)$", f, re.I) and not any(a in f.lower() for a in AVOID)]
