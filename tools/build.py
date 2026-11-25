@@ -6,7 +6,7 @@ import glob, html, os, re, datetime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOMAIN = "https://xn--ef1ay5jhyc.com"
-CSS_VER = "20261125a"
+CSS_VER = "20261125b"
 AD = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1061443138303693" crossorigin="anonymous"></script>'
 NAV = [("一般公開", "/koukai/"), ("護衛艦", "/kan/"), ("海戦", "/kaisen/"), ("戦艦", "/senkan/"), ("人物", "/jinbutsu/")]
 SECTION_NAME = {"kaisen": ("海戦", "/kaisen/"), "senkan": ("戦艦", "/senkan/"), "jinbutsu": ("人物", "/jinbutsu/"),
@@ -49,6 +49,7 @@ def load_photos():
         c[1] = c[1].split("?")[0]
         a = re.sub(r"^No machine-readable author provided\.\s*(.+?) assumed.*$", r"\1", c[3])
         a = re.sub(r"\s*\(talk\).*$", "", a).strip()
+        if re.search(r"unknown author", a, re.I): a = ""
         if not a or a == "不明":
             if "public domain" not in c[4].lower() and "cc0" not in c[4].lower(): continue
             a = "作者不明"
@@ -67,19 +68,121 @@ def photo_html(url):
     return (f'<figure class="photo"><img src="{esc(src)}" alt="{esc(alt)}" loading="lazy" decoding="async">'
             f'<figcaption>{esc(alt)}　写真：{esc(author)} / {lic_html}（<a href="{esc(page)}" rel="noopener" target="_blank">Wikimedia Commons</a>）</figcaption></figure>\n')
 
+def read_body(name):
+    f = os.path.join(ROOT, "tools", "content", name)
+    return open(f, encoding="utf-8").read().split("\n", 2)[2] if os.path.exists(f) else ""
+
+def table_rows(body, n=0):
+    t = re.findall(r"<table.*?</table>", body, re.S)
+    rows = []
+    for tb in t[n:n + 1] if n >= 0 else t:
+        for tr in re.findall(r"<tr>(.*?)</tr>", tb, re.S):
+            tds = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)
+            if tds: rows.append(tds)
+    return rows
+
+def href_of(cell):
+    m = re.search(r'href="(/[^"]+)"', cell)
+    return m.group(1) if m else None
+
+def fig_kaisen(url):
+    body = read_body("kaisen__index.html")
+    items = []
+    for tb in range(2):
+        for r in table_rows(body, tb):
+            y = re.search(r"(1[89]\d\d)", strip(r[0]))
+            if y: items.append((y.group(1), strip(r[1]), href_of(r[1])))
+    if not items: return ""
+    lis = "".join(f'<li class="{"me" if h == url else ""}"><span class="y">{y}</span>'
+                  + (f'<a href="{h}">{esc(n)}</a>' if h and h != url else f'<span>{esc(n)}</span>') + "</li>" for y, n, h in items)
+    return f'<figure class="figure"><ol class="tl">{lis}</ol><figcaption>近代日本の主な海戦の年表（色のついた行がこのページの海戦）</figcaption></figure>\n'
+
+def fig_senkan(url):
+    rows = table_rows(read_body("senkan__index.html"), 0)
+    by = {}
+    for r in rows:
+        if len(r) < 6: continue
+        y = re.search(r"(19\d\d)", strip(r[5]))
+        if y: by.setdefault(y.group(1), []).append((strip(r[1]), href_of(r[1])))
+    if not by: return ""
+    cols = ""
+    for y in sorted(by):
+        ships = "".join(f'<span class="ship{" me" if h == url else ""}">{esc(n)}</span>' for n, h in by[y])
+        cols += f'<div class="yr"><b>{y}年</b>{ships}</div>'
+    return f'<figure class="figure"><div class="fate">{cols}</div><figcaption>旧日本海軍の戦艦12隻が失われた年（色のついたものがこのページの艦）。資料：当サイトの戦艦一覧</figcaption></figure>\n'
+
+def fig_jinbutsu(url):
+    rows = table_rows(read_body("jinbutsu__index.html"), 0)
+    lo, hi = 1840, 1950
+    bars = ""
+    for r in rows:
+        ys = re.findall(r"(1[89]\d\d)年", strip(r[1]))
+        if len(ys) < 2: continue
+        a, b = int(ys[0]), int(ys[-1]); h = href_of(r[0])
+        left = (a - lo) / (hi - lo) * 100; w = (b - a) / (hi - lo) * 100
+        bars += (f'<div class="life{" me" if h == url else ""}"><span class="name">{esc(strip(r[0]))}</span>'
+                 f'<span class="track"><span class="span" style="left:{left:.1f}%;width:{w:.1f}%">{a}–{b}</span></span></div>')
+    marks = "".join(f'<span class="m" style="left:{(y - lo) / (hi - lo) * 100:.1f}%">{y}</span>' for y in (1850, 1900, 1950))
+    ev = "".join(f'<span class="ev" style="left:{(y - lo) / (hi - lo) * 100:.1f}%;top:{tp}px">▲{t}</span>' for y, t, tp in ((1894, "日清戦争", 20), (1904, "日露戦争", 34), (1941, "太平洋戦争", 20)))
+    return f'<figure class="figure"><div class="lives">{bars}<div class="axis">{marks}{ev}</div></div><figcaption>海軍の人物の生きた時代（色のついた行がこのページの人物）</figcaption></figure>\n'
+
+def hero_chips(body):
+    t = re.search(r"<table.*?</table>", body, re.S)
+    if not t: return ""
+    chips = []
+    for th, td in re.findall(r"<th>([^<]*)</th>\s*<td[^>]*>(.*?)</td>", t.group(0), re.S):
+        if th in ("日時", "場所", "竣工", "造船所", "建造所", "生年月日", "没年月日", "出身", "結果", "所在地", "母港", "艦番号", "就役"):
+            v = strip(td)
+            v = re.sub(r"（.*?）", "", v)
+            if 1 < len(v) <= 26 and "未確認" not in v and v != "—":
+                chips.append(f'<span class="chip">{esc(th)} <b>{esc(v)}</b></span>')
+        if len(chips) >= 3: break
+    return f'<div class="chips">{"".join(chips)}</div>' if chips else ""
+
+def related_cards(url):
+    seg = url.strip("/").split("/")
+    if not seg[0] or seg[0] not in SECTION_NAME: return ""
+    d = seg[0]
+    cards = []
+    for f in sorted(glob.glob(os.path.join(ROOT, "tools", "content", f"{d}__*.html"))):
+        u = url_of(f)
+        if u == url: continue
+        b = open(f, encoding="utf-8").read().split("\n", 2)
+        m = re.search(r"<h1>(.*?)</h1>", b[2], re.S)
+        dm = re.search(r'content="([^"]*)"', b[1]); dtext = html.unescape(dm.group(1)) if dm else strip(b[1])
+        cards.append(f'<a class="card" href="{u}"><strong>{esc(strip(m.group(1)) if m else u)}</strong><small>{esc(dtext[:60])}…</small></a>')
+    if not cards: return ""
+    return f'<h2>{SECTION_NAME[d][0]}のほかのページ</h2><div class="cards">{"".join(cards[:9])}</div>\n'
+
+def figure_for(url):
+    if url.startswith("/kaisen/"): return fig_kaisen(url)
+    if url.startswith("/senkan/"): return fig_senkan(url)
+    if url.startswith("/jinbutsu/"): return fig_jinbutsu(url)
+    return ""
+
+def insert_after_first_section(main, fig):
+    if not fig: return main
+    i = main.find("</section>")
+    title = "年表で見る" if "tl" in fig else ("図で見る" if "fate" in fig else "生きた時代を図で見る")
+    fig = f'<section class="block"><h2>{title}</h2>{fig}</section>\n'
+    return main[:i + 10] + "\n" + fig + main[i + 10:] if i >= 0 else main + fig
+
 def render(url, title, desc, body):
     m = re.search(r"<h1>(.*?)</h1>\s*(<p class=\"updated\">.*?</p>)?", body, re.S)
     hero = ""
     if m:
-        hero = f'<div class="page-hero"><h1>{m.group(1)}</h1>{m.group(2) or ""}</div>\n'
         body = body[:m.start()] + body[m.end():]
+        hero = f'<div class="page-hero"><h1>{m.group(1)}</h1>{m.group(2) or ""}{hero_chips(body)}</div>\n'
+    k = body.find('<section class="sources">')
+    rel = related_cards(url)
+    body = (body[:k] + rel + body[k:]) if k >= 0 else body + rel
     crumbs = [("護衛艦.com", "/")]
     seg = url.strip("/").split("/")
     if url != "/":
         if len(seg) == 2 and seg[0] in SECTION_NAME: crumbs.append(SECTION_NAME[seg[0]])
         crumbs.append((strip(m.group(1)) if m else title, None))
     crumb = " › ".join(f'<a href="{u}">{esc(t)}</a>' if u else esc(t) for t, u in crumbs)
-    main = (f'  <div class="crumb">{crumb}</div>\n' if url != "/" else "") + hero + photo_html(url) + blockify(wrap_tables(body))
+    main = (f'  <div class="crumb">{crumb}</div>\n' if url != "/" else "") + hero + photo_html(url) + insert_after_first_section(blockify(wrap_tables(body)), figure_for(url))
     nav = "".join(f'<a href="{u}">{t}</a>' for t, u in NAV)
     return f"""<!DOCTYPE html>
 <html lang="ja">

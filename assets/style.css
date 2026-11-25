@@ -129,3 +129,28 @@ footer.site p{margin:.5em 0}
 .cardimg-row{display:flex;gap:10px;flex-wrap:wrap}
 .cardimg-row img{width:calc(50% - 5px);max-width:320px;height:auto;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.15);background:#fff}
 .cardimg figcaption{font-size:.76rem;color:var(--sub);margin-top:8px;line-height:1.6}
+/* 護衛艦.com figures */
+.figure .tl{list-style:none;margin:0;padding:0 0 0 14px;border-left:3px solid var(--line)}
+.tl li{position:relative;padding:6px 10px 6px 14px;border-radius:10px;display:flex;gap:12px;align-items:baseline}
+.tl li::before{content:"";position:absolute;left:-23px;top:13px;width:13px;height:13px;border-radius:50%;background:#fff;border:3px solid var(--water)}
+.tl li .y{font-weight:800;color:var(--deep);min-width:3.2em;font-variant-numeric:tabular-nums}
+.tl li.me{background:#fff4e0}
+.tl li.me::before{background:var(--accent);border-color:var(--accent)}
+.tl li.me span:last-child{font-weight:800}
+.fate{display:flex;gap:10px;flex-wrap:wrap}
+.fate .yr{flex:1 1 120px;background:#f3f7fb;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.fate .yr b{color:var(--deep);font-size:1.05rem}
+.fate .ship{background:var(--deep);color:#fff;border-radius:8px;padding:3px 9px;font-size:.9rem;text-align:center}
+.fate .ship.me{background:var(--accent);color:#1b1b1b;font-weight:800}
+.lives{display:flex;flex-direction:column;gap:8px}
+.life{display:grid;grid-template-columns:7em 1fr;gap:8px;align-items:center}
+.life .name{font-size:.9rem;font-weight:700}
+.life .track{position:relative;height:26px;background:#eef3f7;border-radius:8px}
+.life .span{position:absolute;top:0;bottom:0;background:var(--water);color:#fff;border-radius:8px;font-size:.78rem;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden}
+.life.me .span{background:var(--accent);color:#1b1b1b;font-weight:800}
+.lives .axis{position:relative;height:52px;margin-left:calc(7em + 8px);border-top:2px solid var(--line)}
+.axis .m{position:absolute;top:4px;transform:translateX(-50%);font-size:.75rem;color:var(--sub)}
+.axis .ev{position:absolute;top:20px;transform:translateX(-50%);font-size:.7rem;color:#b5651d;white-space:nowrap}
+.card small{display:block;color:var(--sub);font-size:.82rem;margin-top:4px;line-height:1.55}
+.card strong{color:var(--deep)}
+html,body{overflow-x:hidden}
