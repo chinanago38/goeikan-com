@@ -100,10 +100,17 @@ def pick(cands, n=6):
     return chosen
 
 # Wikidata が艦級のカテゴリを返す・カテゴリがない艦は、艦ごとのカテゴリを指定する（存在しなければ写真なし）
-OVERRIDE = {"/sensuikan/i400/": "Category:I-400 (submarine, 1944)", "/sensuikan/i58/": "Category:I-58 (submarine, 1944)",
-            "/sensuikan/i19/": "Category:I-19 (submarine, 1940)", "/sensuikan/i168/": "Category:I-168 (submarine, 1933)",
-            "/kan/takanami/": "Category:JS Takanami (DD-110)", "/kan/asahi/": "Category:JS Asahi (DD-119)",
-            "/kan/natori/": "Category:JS Natori (FFM-9)", "/kan/niyodo/": "Category:JS Niyodo (FFM-7)"}
+OVERRIDE = {"/kan/asahi/": "Category:JS Asahi (DD-119)",
+            }
+
+# カテゴリがない艦は、ファイル名検索で補う
+SEARCH = {"/sensuikan/i400/": 'intitle:"I-400"', "/sensuikan/i58/": 'intitle:"I-58"', "/sensuikan/i19/": 'intitle:"I-19"',
+          "/sensuikan/i168/": 'intitle:"I-168"', "/kan/takanami/": 'intitle:"DD-110"', "/kan/niyodo/": 'intitle:"Niyodo"',
+          "/kan/natori/": 'intitle:"Natori" FFM'}
+
+def search_files(q):
+    d = api("commons.wikimedia.org", {"action": "query", "list": "search", "srsearch": q, "srnamespace": 6, "srlimit": 50})
+    return [h["title"] for h in d.get("query", {}).get("search", [])]
 
 def main():
     rows = [l.split("\t") for l in open(os.path.join(ROOT, "tools/photos/targets.tsv"), encoding="utf-8").read().splitlines()[1:] if l.strip()]
@@ -111,11 +118,16 @@ def main():
     for slug, ja in rows:
         if not re.match(r"^/(kan|senkan|kubo|sensuikan)/[a-z0-9]+/$", slug): continue
         cat = OVERRIDE.get(slug) or commons_category(ja)
+        if not cat and slug in SEARCH: cat = ""
         if cat and slug not in OVERRIDE and " class" in cat.lower():
-            print("class category skipped:", slug, cat); continue
-        if not cat:
+            print("class category skipped:", slug, cat)
+            if slug not in SEARCH: continue
+            cat = ""
+        if cat is None:
             print("no category:", slug, ja); continue
-        files = [f for f in files_in(cat) if re.search(r"\.(jpe?g|png)$", f, re.I) and not any(a in f.lower() for a in AVOID)]
+        allf = files_in(cat) if cat else []
+        if len(allf) < 3 and slug in SEARCH: allf += search_files(SEARCH[slug])
+        files = [f for f in dict.fromkeys(allf) if re.search(r"\.(jpe?g|png)$", f, re.I) and not any(a in f.lower() for a in AVOID)]
         got = pick([c for c in infos(files[:160]) if not any(a in c["text"] for a in AVOID)])
         for label, c in got:
             out.append("\t".join([slug, label, c["thumb"], c["page"], c["author"], c["license"], c["license_url"]]))
