@@ -58,6 +58,20 @@ def load_photos():
     return photos
 
 PHOTOS = None
+# 自分の写真がないページは、関係の深いページの写真を「参考」と明記して使う
+FALLBACK = {"/kan/kumano/": ("/kan/mogami/", "（参考）同型艦もがみ"), "/kan/mikuma/": ("/kan/mogami/", "（参考）同型艦もがみ"),
+            "/kan/noshiro/": ("/kan/mogami/", "（参考）同型艦もがみ"), "/kaisen/": ("/kaisen/nihonkai/", ""),
+            "/jinbutsu/": ("/jinbutsu/togo/", ""), "/minato/": ("/minato/yokosuka/", ""), "/namae/": ("/kan/kaga/", "（参考）護衛艦かが"),
+            "/mirareru/": ("/koukai/", "")}
+def photo_for(url):
+    global PHOTOS
+    if PHOTOS is None: PHOTOS = load_photos()
+    if url in PHOTOS: return PHOTOS[url]
+    if url in FALLBACK and FALLBACK[url][0] in PHOTOS:
+        r = list(PHOTOS[FALLBACK[url][0]])
+        if FALLBACK[url][1]: r[6] = FALLBACK[url][1]
+        return r
+    return None
 
 def photo_html(url):
     global PHOTOS
@@ -249,7 +263,7 @@ def render(url, title, desc, body):
         body = body[:m.start()] + body[m.end():]
         global PHOTOS
         if PHOTOS is None: PHOTOS = load_photos()
-        ph = PHOTOS.get(url)
+        ph = photo_for(url)
         if ph:
             credit = (f'<p class="credit">写真：{esc(ph[6])} {esc(ph[3])} / <a href="{esc(ph[5])}" rel="noopener license" target="_blank">{esc(ph[4])}</a>'
                       f'（<a href="{esc(ph[2])}" rel="noopener" target="_blank">Wikimedia Commons</a>）</p>')
