@@ -39,6 +39,34 @@ def blockify(body):
         elif strip(p): out.append(f'<div class="block lead-block">{p.strip()}</div>\n')
     return "".join(out) + tail
 
+def load_photos():
+    photos = {}
+    f = os.path.join(ROOT, "tools", "photos", "commons.tsv")
+    if not os.path.exists(f): return photos
+    for line in open(f, encoding="utf-8").read().splitlines()[1:]:
+        c = line.split("\t")
+        if len(c) < 7 or not re.match(r"https://(upload|thumb)\.wikimedia\.org/", c[1]): continue
+        c[1] = c[1].split("?")[0]
+        a = re.sub(r"^No machine-readable author provided\.\s*(.+?) assumed.*$", r"\1", c[3])
+        a = re.sub(r"\s*\(talk\).*$", "", a).strip()
+        if not a or a == "不明":
+            if "public domain" not in c[4].lower() and "cc0" not in c[4].lower(): continue
+            a = "作者不明"
+        c[3] = a
+        photos[c[0].strip()] = c
+    return photos
+
+PHOTOS = None
+
+def photo_html(url):
+    global PHOTOS
+    if PHOTOS is None: PHOTOS = load_photos()
+    if url not in PHOTOS: return ""
+    _, src, page, author, lic, lic_url, alt = PHOTOS[url][:7]
+    lic_html = f'<a href="{esc(lic_url)}" rel="noopener license" target="_blank">{esc(lic)}</a>' if lic_url.startswith("http") else esc(lic)
+    return (f'<figure class="photo"><img src="{esc(src)}" alt="{esc(alt)}" loading="lazy" decoding="async">'
+            f'<figcaption>{esc(alt)}　写真：{esc(author)} / {lic_html}（<a href="{esc(page)}" rel="noopener" target="_blank">Wikimedia Commons</a>）</figcaption></figure>\n')
+
 def render(url, title, desc, body):
     m = re.search(r"<h1>(.*?)</h1>\s*(<p class=\"updated\">.*?</p>)?", body, re.S)
     hero = ""
@@ -51,7 +79,7 @@ def render(url, title, desc, body):
         if len(seg) == 2 and seg[0] in SECTION_NAME: crumbs.append(SECTION_NAME[seg[0]])
         crumbs.append((strip(m.group(1)) if m else title, None))
     crumb = " › ".join(f'<a href="{u}">{esc(t)}</a>' if u else esc(t) for t, u in crumbs)
-    main = (f'  <div class="crumb">{crumb}</div>\n' if url != "/" else "") + hero + blockify(wrap_tables(body))
+    main = (f'  <div class="crumb">{crumb}</div>\n' if url != "/" else "") + hero + photo_html(url) + blockify(wrap_tables(body))
     nav = "".join(f'<a href="{u}">{t}</a>' for t, u in NAV)
     return f"""<!DOCTYPE html>
 <html lang="ja">
