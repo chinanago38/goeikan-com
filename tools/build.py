@@ -274,7 +274,7 @@ def render(url, title, desc, body):
     if gal:
         j = main.find('<section class="sources block">')
         main = main[:j] + gal + main[j:] if j >= 0 else main + gal
-    nav = "".join(f'<a href="{u}">{t}</a>' for t, u in NAV)
+    nav = "".join(f'<a href="{u}">{t}</a>' for t, u in NAV if os.path.exists(os.path.join(ROOT, u.strip("/"), "index.html")) or u == "/koukai/")
     return f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
