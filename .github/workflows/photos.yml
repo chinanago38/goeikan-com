@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths: ["tools/photos/targets.tsv", "tools/fetch_photos.py"]
   workflow_dispatch:
+concurrency:
+  group: fetch-photos
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
