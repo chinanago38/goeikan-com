@@ -237,7 +237,7 @@ def top_hero(body):
     stats = [("54隻", "現役の護衛艦", "/kan/"), ("4", "地方総監部と大湊", "/minato/"), (str(len(glob.glob(os.path.join(ROOT, "tools", "content", "kaisen__*.html"))) - 1), "海戦の解説", "/kaisen/"), ("12隻", "旧海軍の戦艦", "/senkan/")]
     st = "".join(f'<a class="stat" href="{u}"><b>{v}</b><small>{t}</small></a>' for v, t, u in stats)
     return (f'<section class="tophero"{bg}><div class="inner"><p class="kicker">海上自衛隊の護衛艦と、日本の海の歴史</p>'
-            f'<h1>護衛艦の一般公開と<br>海の歴史ガイド</h1><p class="lead">全国の艦艇公開の予定、現役の護衛艦の1隻ずつのガイド、日本海海戦から坊ノ岬沖まで。公的な資料だけで作る、個人運営のガイドです。</p>'
+            f'<h1>護衛艦の一般公開と<br>海の歴史ガイド</h1><p class="lead">全国の艦艇公開の予定、現役の護衛艦の1隻ずつのガイド、日本海海戦から坊ノ岬沖まで。公的な資料だけで作るガイドです。</p>'
             f'<div class="stats">{st}</div><div class="cta"><a class="btn" href="/koukai/">一般公開カレンダー</a><a class="btn ghost" href="/kan/">護衛艦一覧</a></div></div>{credit}</section>\n')
 
 def ul_to_cards(main):
@@ -316,7 +316,7 @@ def render(url, title, desc, body):
 {main}</div></main>
 
 <footer class="site"><div class="wrap">
-  <p>護衛艦.com は、護衛艦の一般公開や海の歴史をまとめた個人運営の情報サイトです。防衛省・海上自衛隊の公式サイトではありません。</p>
+  <p>護衛艦.com は、護衛艦の一般公開や海の歴史をまとめた情報サイトです。防衛省・海上自衛隊とは関係のない、ちんあなご編集部のサイトです。</p>
   <p>{" ・ ".join(f'<a href="{u}">{t}</a>' for t, u in [("トップ", "/")] + NAV)}</p>
   <p><a href="/operator/">運営者情報</a> ・ <a href="/editorial-policy/">編集方針</a> ・ <a href="/contact/">お問い合わせ</a> ・ <a href="/privacy/">プライバシーポリシー</a> ・ <a href="/disclaimer/">免責事項</a></p>
   <p>© 2026 護衛艦.com</p>
